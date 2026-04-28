@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alice">
+<meta name="theme-color" content="#020c18">
+<title>Alice — AI Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: #020c18; color: #c8e6ff; font-family: 'Share Tech Mono', monospace; min-height: 100vh; min-height: -webkit-fill-available; overflow-x: hidden; }
+  .container { max-width: 680px; margin: 0 auto; padding: env(safe-area-inset-top, 1.5rem) 1rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 1.1rem; }
+  .header { text-align: center; padding-top: 0.5rem; }
+  .title { font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 700; color: #4fc3f7; letter-spacing: 0.3em; text-shadow: 0 0 20px rgba(79,195,247,0.5); }
+  .subtitle { font-size: 0.6rem; color: #546e7a; letter-spacing: 0.2em; margin-top: 4px; }
+
+  .api-panel { width: 100%; background: rgba(4,20,40,0.9); border: 1px solid rgba(79,195,247,0.2); border-radius: 4px; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 8px; }
+  .api-label { font-size: 0.6rem; letter-spacing: 0.15em; color: rgba(79,195,247,0.4); }
+  .api-row { display: flex; gap: 8px; align-items: center; }
+  .api-input { flex: 1; background: rgba(2,12,24,0.9); border: 1px solid rgba(79,195,247,0.15); color: #4fc3f7; padding: 0.5rem 0.8rem; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; outline: none; border-radius: 2px; letter-spacing: 0.05em; transition: border-color 0.2s; -webkit-appearance: none; }
+  .api-input:focus { border-color: rgba(79,195,247,0.4); }
+  .api-input::placeholder { color: rgba(79,195,247,0.2); }
+  .api-status { font-size: 0.6rem; letter-spacing: 0.12em; }
+  .api-status.ok { color: #66bb6a; }
+  .api-status.err { color: #ef5350; }
+  .api-status.warn { color: #ffa726; }
+
+  .btn-small { background: transparent; border: 1px solid rgba(79,195,247,0.25); color: #4fc3f7; padding: 0.45rem 0.75rem; font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.12em; cursor: pointer; border-radius: 2px; transition: all 0.2s; white-space: nowrap; }
+  .btn-small:active { background: rgba(79,195,247,0.15); }
+
+  .orb-container { position: relative; width: 150px; height: 150px; cursor: pointer; flex-shrink: 0; }
+  .orb-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(79,195,247,0.2); animation: rotate-ring 8s linear infinite; }
+  .orb-ring:nth-child(1) { inset: 0; border-color: rgba(79,195,247,0.3); }
+  .orb-ring:nth-child(2) { inset: 12px; border-color: rgba(79,195,247,0.2); animation-duration: 12s; animation-direction: reverse; }
+  .orb-ring:nth-child(3) { inset: 24px; border-color: rgba(79,195,247,0.15); animation-duration: 6s; }
+  @keyframes rotate-ring { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .orb-core { position: absolute; inset: 34px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #1e88e5, #0a1929); border: 2px solid rgba(79,195,247,0.6); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: inset 0 0 20px rgba(79,195,247,0.2); }
+  .orb-core.listening { border-color: #ef5350; box-shadow: inset 0 0 25px rgba(239,83,80,0.3), 0 0 30px rgba(239,83,80,0.4); animation: pulse-red 1s ease-in-out infinite; }
+  .orb-core.speaking { border-color: #66bb6a; box-shadow: inset 0 0 25px rgba(102,187,106,0.3), 0 0 30px rgba(102,187,106,0.4); animation: pulse-green 0.6s ease-in-out infinite; }
+  .orb-core.thinking { border-color: #ffa726; box-shadow: inset 0 0 25px rgba(255,167,38,0.3), 0 0 30px rgba(255,167,38,0.4); animation: pulse-amber 1.5s ease-in-out infinite; }
+  .orb-core.locked { border-color: #ef5350; opacity: 0.5; }
+  @keyframes pulse-red { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+  @keyframes pulse-green { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+  @keyframes pulse-amber { 0%,100%{opacity:1} 50%{opacity:0.7} }
+  .orb-icon { font-size: 1.7rem; }
+
+  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 0.65rem; letter-spacing: 0.15em; color: #546e7a; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4fc3f7; animation: blink 2s ease-in-out infinite; }
+  .status-dot.red { background: #ef5350; animation-duration: 0.5s; }
+  .status-dot.green { background: #66bb6a; animation-duration: 0.4s; }
+  .status-dot.amber { background: #ffa726; animation-duration: 1s; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .chat-window { width: 100%; background: rgba(4,20,40,0.8); border: 1px solid rgba(79,195,247,0.15); border-radius: 4px; height: 220px; overflow-y: auto; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.9rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+  .chat-window::-webkit-scrollbar { width: 3px; }
+  .chat-window::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.3); border-radius: 2px; }
+
+  .message { display: flex; flex-direction: column; gap: 3px; animation: fade-in 0.3s ease; }
+  @keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .message.user { align-items: flex-end; }
+  .message.alice { align-items: flex-start; }
+  .message-label { font-size: 0.55rem; letter-spacing: 0.2em; color: #37474f; }
+  .message.alice .message-label { color: rgba(79,195,247,0.5); }
+  .message-bubble { max-width: 88%; padding: 0.55rem 0.85rem; border-radius: 2px; font-size: 0.78rem; line-height: 1.6; }
+  .message.user .message-bubble { background: rgba(79,195,247,0.08); border: 1px solid rgba(79,195,247,0.2); color: #b0bec5; }
+  .message.alice .message-bubble { background: rgba(30,136,229,0.1); border: 1px solid rgba(30,136,229,0.25); color: #c8e6ff; }
+
+  .typing-indicator { display: flex; gap: 4px; padding: 0.4rem; align-items: center; }
+  .typing-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(79,195,247,0.6); animation: typing-bounce 1.2s ease-in-out infinite; }
+  .typing-dot:nth-child(2){animation-delay:0.2s} .typing-dot:nth-child(3){animation-delay:0.4s}
+  @keyframes typing-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+  .input-section { width: 100%; display: flex; flex-direction: column; gap: 0.65rem; }
+  .input-row { display: flex; gap: 7px; align-items: center; }
+  .text-input { flex: 1; background: rgba(4,20,40,0.9); border: 1px solid rgba(79,195,247,0.2); color: #c8e6ff; padding: 0.6rem 0.9rem; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; outline: none; border-radius: 2px; transition: border-color 0.2s; -webkit-appearance: none; }
+  .text-input::placeholder { color: rgba(79,195,247,0.25); }
+  .text-input:focus { border-color: rgba(79,195,247,0.5); }
+  .text-input:disabled { opacity: 0.4; }
+
+  .btn { background: transparent; border: 1px solid rgba(79,195,247,0.3); color: #4fc3f7; padding: 0.6rem 0.9rem; font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.12em; cursor: pointer; border-radius: 2px; transition: all 0.2s; white-space: nowrap; }
+  .btn:active { background: rgba(79,195,247,0.15); transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn.mic { background: rgba(239,83,80,0.1); border-color: rgba(239,83,80,0.4); color: #ef9a9a; }
+  .btn.mic.active { background: rgba(239,83,80,0.25); border-color: #ef5350; color: #ef5350; }
+
+  .controls-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .quick-commands { display: flex; gap: 5px; flex-wrap: wrap; }
+  .quick-btn { background: transparent; border: 1px solid rgba(79,195,247,0.12); color: #546e7a; padding: 4px 9px; font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .quick-btn:active { border-color: rgba(79,195,247,0.4); color: #78909c; }
+  .quick-btn:disabled { opacity: 0.3; }
+
+  .speak-toggle { display: flex; align-items: center; gap: 7px; font-size: 0.6rem; color: #546e7a; cursor: pointer; }
+  .toggle-switch { width: 28px; height: 14px; background: rgba(79,195,247,0.1); border: 1px solid rgba(79,195,247,0.2); border-radius: 7px; position: relative; transition: all 0.2s; }
+  .toggle-switch.on { background: rgba(79,195,247,0.25); border-color: rgba(79,195,247,0.5); }
+  .toggle-knob { position: absolute; width: 10px; height: 10px; background: rgba(79,195,247,0.4); border-radius: 50%; top: 1px; left: 1px; transition: all 0.2s; }
+  .toggle-switch.on .toggle-knob { left: 15px; background: #4fc3f7; }
+
+  .waveform { width: 100%; height: 32px; display: flex; align-items: center; justify-content: center; gap: 3px; opacity: 0; transition: opacity 0.3s; }
+  .waveform.active { opacity: 1; }
+  .wave-bar { width: 3px; border-radius: 2px; background: #ef5350; animation: wave-anim 0.8s ease-in-out infinite alternate; }
+  .wave-bar:nth-child(odd) { animation-direction: alternate-reverse; }
+  @keyframes wave-anim { from{height:4px;opacity:0.4} to{height:20px;opacity:1} }
+
+  .footer-line { font-size: 0.5rem; color: rgba(79,195,247,0.12); letter-spacing: 0.15em; text-align: center; padding-bottom: env(safe-area-inset-bottom, 0); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title">A L I C E</div>
+    <div class="subtitle">ARTIFICIAL LINGUISTIC INTELLIGENCE CORE ENGINE</div>
+  </div>
+
+  <div class="api-panel">
+    <div class="api-label">🔐 CLAVE DE ACCESO — ANTHROPIC API KEY</div>
+    <div class="api-row">
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <button class="btn-small" onclick="activateKey()">ACTIVAR</button>
+      <button class="btn-small" onclick="clearKey()" style="border-color:rgba(239,83,80,0.25);color:#ef9a9a;">BORRAR</button>
+    </div>
+    <div class="api-status warn" id="apiStatus">⚠ INGRESA TU API KEY PARA ACTIVAR ALICE</div>
+  </div>
+
+  <div class="orb-container" id="orbContainer" onclick="handleOrbClick()">
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-core locked" id="orbCore">
+      <span class="orb-icon" id="orbIcon">🔒</span>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">ESPERANDO ACTIVACIÓN</span>
+  </div>
+
+  <div class="waveform" id="waveform">
+    <div class="wave-bar" style="animation-delay:0s"></div>
+    <div class="wave-bar" style="animation-delay:0.1s"></div>
+    <div class="wave-bar" style="animation-delay:0.05s"></div>
+    <div class="wave-bar" style="animation-delay:0.15s"></div>
+    <div class="wave-bar" style="animation-delay:0.08s"></div>
+    <div class="wave-bar" style="animation-delay:0.12s"></div>
+    <div class="wave-bar" style="animation-delay:0.03s"></div>
+    <div class="wave-bar" style="animation-delay:0.18s"></div>
+    <div class="wave-bar" style="animation-delay:0.06s"></div>
+    <div class="wave-bar" style="animation-delay:0.14s"></div>
+  </div>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="message alice">
+      <div class="message-label">ALICE · SISTEMA</div>
+      <div class="message-bubble">Ingresa tu API key de Anthropic para activarme. Tu clave nunca se almacena ni se comparte — solo vive en esta sesión.</div>
+    </div>
+  </div>
+
+  <div class="input-section">
+    <div class="input-row">
+      <input type="text" class="text-input" id="userInput" placeholder="ACTIVA ALICE PRIMERO..." disabled autocorrect="off" autocapitalize="off" />
+      <button class="btn mic" id="micBtn" onclick="toggleMic()" disabled>🎤</button>
+      <button class="btn" id="sendBtn" onclick="sendMessage()" disabled>ENVIAR ↗</button>
+    </div>
+    <div class="controls-row">
+      <div class="quick-commands">
+        <button class="quick-btn" id="q1" onclick="quickSend('¿Qué hora es?')" disabled>HORA</button>
+        <button class="quick-btn" id="q2" onclick="quickSend('Cuéntame un dato curioso')" disabled>DATO</button>
+        <button class="quick-btn" id="q3" onclick="quickSend('¿Cómo puedes ayudarme?')" disabled>AYUDA</button>
+        <button class="quick-btn" id="q4" onclick="quickSend('Haz un chiste')" disabled>HUMOR</button>
+      </div>
+      <label class="speak-toggle" onclick="toggleVoice()">
+        <div class="toggle-switch" id="voiceToggle"><div class="toggle-knob"></div></div>
+        <span id="voiceLabel">VOZ</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="footer-line">ALICE v2.1 · GITHUB PAGES · API KEY NO ALMACENADA</div>
+</div>
+
+<script>
+let apiKey = '';
+let conversationHistory = [];
+let isListening = false;
+let voiceEnabled = false;
+let recognition = null;
+let currentUtterance = null;
+
+const orbCore = document.getElementById('orbCore');
+const orbIcon = document.getElementById('orbIcon');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const chatWindow = document.getElementById('chatWindow');
+const userInput = document.getElementById('userInput');
+const waveform = document.getElementById('waveform');
+const micBtn = document.getElementById('micBtn');
+
+function activateKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    document.getElementById('apiStatus').className = 'api-status err';
+    document.getElementById('apiStatus').textContent = '✗ FORMATO INVÁLIDO — debe comenzar con sk-ant-';
+    return;
+  }
+  apiKey = val;
+  document.getElementById('apiKeyInput').value = '●'.repeat(20);
+  document.getElementById('apiStatus').className = 'api-status ok';
+  document.getElementById('apiStatus').textContent = '✓ CLAVE ACTIVA — ALICE EN LÍNEA';
+  enableInterface();
+  addMessage('alice', 'Sistemas activos. Hola, soy Alice. ¿En qué puedo asistirte hoy?');
+  setStatus('idle');
+}
+
+function clearKey() {
+  apiKey = '';
+  conversationHistory = [];
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('apiStatus').className = 'api-status warn';
+  document.getElementById('apiStatus').textContent = '⚠ INGRESA TU API KEY PARA ACTIVAR ALICE';
+  disableInterface();
+  setStatus('locked');
+}
+
+function enableInterface() {
+  userInput.disabled = false;
+  userInput.placeholder = 'INGRESA UN COMANDO...';
+  document.getElementById('sendBtn').disabled = false;
+  micBtn.disabled = false;
+  ['q1','q2','q3','q4'].forEach(id => document.getElementById(id).disabled = false);
+  orbCore.className = 'orb-core';
+  orbIcon.textContent = '◈';
+}
+
+function disableInterface() {
+  userInput.disabled = true;
+  userInput.placeholder = 'ACTIVA ALICE PRIMERO...';
+  document.getElementById('sendBtn').disabled = true;
+  micBtn.disabled = true;
+  ['q1','q2','q3','q4'].forEach(id => document.getElementById(id).disabled = true);
+  orbCore.className = 'orb-core locked';
+  orbIcon.textContent = '🔒';
+}
+
+function setStatus(mode) {
+  orbCore.className = 'orb-core';
+  statusDot.className = 'status-dot';
+  waveform.classList.remove('active');
+  if (mode === 'locked') { orbCore.classList.add('locked'); orbIcon.textContent = '🔒'; statusText.textContent = 'ESPERANDO ACTIVACIÓN'; }
+  else if (mode === 'idle') { orbIcon.textContent = '◈'; statusText.textContent = 'EN ESPERA DE INSTRUCCIONES'; }
+  else if (mode === 'listening') { orbCore.classList.add('listening'); statusDot.classList.add('red'); orbIcon.textContent = '◉'; statusText.textContent = 'ESCUCHANDO...'; waveform.classList.add('active'); waveform.querySelectorAll('.wave-bar').forEach(b => b.style.background = '#ef5350'); }
+  else if (mode === 'thinking') { orbCore.classList.add('thinking'); statusDot.classList.add('amber'); orbIcon.textContent = '◎'; statusText.textContent = 'PROCESANDO SOLICITUD...'; }
+  else if (mode === 'speaking') { orbCore.classList.add('speaking'); statusDot.classList.add('green'); orbIcon.textContent = '◉'; statusText.textContent = 'ALICE HABLANDO'; waveform.classList.add('active'); waveform.querySelectorAll('.wave-bar').forEach(b => b.style.background = '#66bb6a'); }
+}
+
+function addMessage(role, text) {
+  const msg = document.createElement('div');
+  msg.className = 'message ' + (role === 'user' ? 'user' : 'alice');
+  const label = document.createElement('div');
+  label.className = 'message-label';
+  label.textContent = role === 'user' ? 'TÚ' : 'ALICE';
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = text;
+  msg.appendChild(label);
+  msg.appendChild(bubble);
+  chatWindow.appendChild(msg);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function addTyping() {
+  const msg = document.createElement('div');
+  msg.className = 'message alice'; msg.id = 'typingMsg';
+  const label = document.createElement('div');
+  label.className = 'message-label'; label.textContent = 'ALICE';
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble typing-indicator';
+  bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  msg.appendChild(label); msg.appendChild(bubble);
+  chatWindow.appendChild(msg);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function removeTyping() { const t = document.getElementById('typingMsg'); if (t) t.remove(); }
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text || !apiKey) return;
+  userInput.value = '';
+  await processMessage(text);
+}
+
+async function quickSend(text) { if (!apiKey) return; await processMessage(text); }
+
+async function processMessage(text) {
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+  setStatus('thinking');
+  addTyping();
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `Eres Alice, una asistente de inteligencia artificial avanzada, sofisticada y eficiente, inspirada en Jarvis de Iron Man. Tu personalidad es:
+- Profesional, concisa y directa, pero con una sutil calidez
+- Hablas en español con fluidez y elegancia
+- Eres proactiva, anticipas necesidades del usuario
+- Tienes ligero sentido del humor, sutil e inteligente
+- No usas emojis ni signos de exclamación excesivos
+- Tus respuestas son claras y útiles, nunca largas sin necesidad
+Responde siempre en español a menos que el usuario hable en otro idioma.`,
+        messages: conversationHistory
+      })
+    });
+    const data = await response.json();
+    removeTyping();
+    if (data.error) {
+      addMessage('alice', data.error.type === 'authentication_error' ? 'Clave de acceso inválida. Verifica tu API key.' : 'Error: ' + data.error.message);
+      setStatus('idle'); return;
+    }
+    const reply = data.content && data.content[0] ? data.content[0].text : 'Sin respuesta del núcleo.';
+    conversationHistory.push({ role: 'assistant', content: reply });
+    addMessage('alice', reply);
+    if (voiceEnabled) speakText(reply);
+    else setStatus('idle');
+  } catch (err) {
+    removeTyping();
+    addMessage('alice', 'Error de conexión con el núcleo neural. Verifica tu red.');
+    setStatus('idle');
+  }
+}
+
+function speakText(text) {
+  if (currentUtterance) window.speechSynthesis.cancel();
+  setStatus('speaking');
+  const utterance = new SpeechSynthesisUtterance(text.replace(/[*_`#]/g, ''));
+  utterance.lang = 'es-ES'; utterance.rate = 0.95; utterance.pitch = 1.05;
+  const voices = window.speechSynthesis.getVoices();
+  const v = voices.find(v => v.lang.startsWith('es') && v.name.toLowerCase().includes('female')) || voices.find(v => v.lang.startsWith('es'));
+  if (v) utterance.voice = v;
+  utterance.onend = () => setStatus('idle');
+  utterance.onerror = () => setStatus('idle');
+  currentUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
+}
+
+function toggleVoice() {
+  voiceEnabled = !voiceEnabled;
+  document.getElementById('voiceToggle').classList.toggle('on', voiceEnabled);
+  document.getElementById('voiceLabel').textContent = voiceEnabled ? 'VOZ ON' : 'VOZ';
+}
+
+function toggleMic() {
+  if (!apiKey) return;
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    addMessage('alice', 'Reconocimiento de voz no disponible en este navegador.'); return;
+  }
+  if (isListening) { recognition && recognition.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'es-ES'; recognition.continuous = false; recognition.interimResults = false;
+  recognition.onstart = () => { isListening = true; micBtn.classList.add('active'); micBtn.textContent = '⏹'; setStatus('listening'); };
+  recognition.onresult = (e) => { userInput.value = e.results[0][0].transcript; };
+  recognition.onend = () => { isListening = false; micBtn.classList.remove('active'); micBtn.textContent = '🎤'; setStatus('idle'); if (userInput.value.trim()) setTimeout(() => sendMessage(), 300); };
+  recognition.onerror = () => { isListening = false; micBtn.classList.remove('active'); micBtn.textContent = '🎤'; setStatus('idle'); };
+  recognition.start();
+}
+
+function handleOrbClick() {
+  if (!apiKey) return;
+  if (!isListening) toggleMic();
+  else { window.speechSynthesis.cancel(); setStatus('idle'); }
+}
+
+userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+window.speechSynthesis.onvoiceschanged = () => {};
+</script>
+</body>
+</html>
